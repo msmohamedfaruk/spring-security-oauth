@@ -24,6 +24,7 @@ spring:
               authorization-grant-types:
                 - authorization_code
                 - refresh_token
+                - urn:ietf:params:oauth:grant-type:custom_code #Extn grant type to support API key with OIDC
               redirect-uris:
                 - http://127.0.0.1:8080/login/oauth2/code/articles-client-oidc
                 - http://127.0.0.1:8080/authorized
