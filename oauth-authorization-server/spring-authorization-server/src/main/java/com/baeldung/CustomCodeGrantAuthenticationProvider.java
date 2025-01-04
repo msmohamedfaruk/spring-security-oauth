@@ -1,5 +1,7 @@
 package com.baeldung;
 
+import static com.baeldung.CustomCodeGrantAuthenticationToken.AUTHORIZED_SCOPES;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -68,6 +70,7 @@ public class CustomCodeGrantAuthenticationProvider implements AuthenticationProv
                     .tokenType(OAuth2TokenType.ACCESS_TOKEN)
                     .authorizationGrantType(customCodeGrantAuthentication.getGrantType())
                     .authorizationGrant(customCodeGrantAuthentication)
+                    .authorizedScopes(AUTHORIZED_SCOPES)    // scope to grant the resource server via access token
                     .build();
 
             OAuth2Token generatedAccessToken = this.tokenGenerator.generate(tokenContext);
