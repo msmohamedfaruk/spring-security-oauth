@@ -5,12 +5,11 @@ import static org.springframework.security.config.Customizer.withDefaults;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationService;
@@ -22,11 +21,11 @@ import org.springframework.security.oauth2.server.authorization.token.JwtGenerat
 import org.springframework.security.oauth2.server.authorization.token.OAuth2AccessTokenGenerator;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2RefreshTokenGenerator;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 import com.baeldung.CustomCodeGrantAuthenticationConverter;
 import com.baeldung.CustomCodeGrantAuthenticationProvider;
+import com.baeldung.service.MyUserDetailsService;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
@@ -58,8 +57,11 @@ public class DefaultSecurityConfig {
     @Bean
     @Order(2)
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests(authorizeRequests -> authorizeRequests.anyRequest()
-                        .authenticated())
+        http.authorizeHttpRequests(
+                        authorizeRequests -> authorizeRequests.anyRequest()
+                                .authenticated())
+                // uncomment, if we want to represent auth server as resource server
+//                .oauth2ResourceServer(oauth -> oauth.jwt(withDefaults()))
                 .formLogin(withDefaults());
         return http.build();
     }
@@ -93,16 +95,33 @@ public class DefaultSecurityConfig {
                 jwtGenerator, accessTokenGenerator, refreshTokenGenerator);
     }
 
+//    @Bean
+//    UserDetailsService users() {
+//        PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+//        UserDetails user = User.builder()
+//                .username("admin")
+//                .password("password")
+//                .passwordEncoder(encoder::encode)
+//                .roles("USER")
+//                .build();
+//        return new InMemoryUserDetailsManager(user);
+//    }
+
+    // added to rely on user details from JDBC
+
     @Bean
-    UserDetailsService users() {
-        PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-        UserDetails user = User.builder()
-                .username("admin")
-                .password("password")
-                .passwordEncoder(encoder::encode)
-                .roles("USER")
-                .build();
-        return new InMemoryUserDetailsManager(user);
+    UserDetailsService userDetailsService(){
+        return (UserDetailsService) new MyUserDetailsService();
+    }
+
+    @Bean
+    DaoAuthenticationProvider customDaoAuthenticationProvider(){
+        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
+        daoAuthenticationProvider.setUserDetailsService(userDetailsService());
+        // defining passwordEncoder bean will prevent token api [CustomCodeGrantAuthenticationProvider]
+        // authentication via noOpPasswordEncoder, hence declaring BCrypt only for DAOProvider
+		daoAuthenticationProvider.setPasswordEncoder(new BCryptPasswordEncoder());
+        return daoAuthenticationProvider;
     }
 
 }
